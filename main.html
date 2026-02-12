@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통(通)역기 - AI 소통 비서</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 전역: 페이지 스크롤 비활성화 (데스크톱 기본) */
+        html,
+        body {
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* 모바일(<=768px)에서는 스크롤 허용 */
+        @media (max-width: 768px) {
+
+            html,
+            body {
+                overflow: auto;
+                height: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        /* 로딩 애니메이션 */
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-bounce-1 {
+            animation: bounce 1s infinite;
+        }
+
+        .animate-bounce-2 {
+            animation: bounce 1s infinite 0.1s;
+        }
+
+        .animate-bounce-3 {
+            animation: bounce 1s infinite 0.2s;
+        }
+
+        /* 커스텀 버튼 스타일 */
+        .mode-btn {
+            position: relative;
+            z-index: 1;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            border: 2px solid transparent;
+            /* 기본 2px로 고정 */
+        }
+
+        .mode-btn-active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+            z-index: 2;
+            border-color: transparent;
+        }
+
+        .mode-btn-inactive {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-color: #e5e7eb;
+        }
+
+        .mode-btn-inactive:hover {
+            border-color: #10b981;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+        }
+
+        /* 버튼 컨테이너에 여백 추가 (hover 시 가려지지 않도록) */
+        .mode-btn-container {
+            position: relative;
+            padding-top: 2px;
+            /* hover 시 위로 올라가는 공간 확보 */
+        }
+
+        /* 퀴즈 선택 스타일 */
+        .quiz-choice {
+            border: 1px solid #e5e7eb;
+            /* gray-200 */
+            border-radius: 0.5rem;
+            /* rounded */
+            padding: 0.5rem;
+            /* p-2 */
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+        }
+
+        .quiz-choice:hover {
+            background: #f9fafb;
+            /* gray-50 */
+        }
+
+        .quiz-choice.selected {
+            border-color: #10b981;
+            /* emerald-500 */
+            background: #ecfdf5;
+            /* emerald-50 */
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) inset;
+        }
+
+        /* 모바일 탭 완전 고정 스타일: 크기/여백/폰트 고정 */
+        @media (max-width: 768px) {
+
+            .mode-btn,
+            .mode-btn-active,
+            .mode-btn-inactive,
+            .mode-btn-inactive:hover {
+                padding: 8px 16px !important;
+                /* py-2 px-4 */
+                font-size: 14px !important;
+                /* text-sm */
+                line-height: 1.25rem !important;
+                /* leading-5 */
+                min-height: 44px !important;
+                /* 터치 타겟 고정 */
+                border-width: 2px !important;
+                /* 테두리 두께 고정 */
+                border-radius: 0.75rem !important;
+                /* rounded-xl */
+                box-shadow: none !important;
+                transform: none !important;
+                transition: none !important;
+                -webkit-tap-highlight-color: transparent;
+                display: inline-flex;
+                align-items: center;
+                white-space: nowrap;
+            }
+        }
+
+        /* 모바일 탭 전환 시 버튼 크기 증가 방지 */
+        @media (max-width: 768px) {
+
+            .mode-btn,
+            .mode-btn-active,
+            .mode-btn-inactive,
+            .mode-btn-inactive:hover {
+                transform: none !important;
+                /* 높이 변화 유발 방지 */
+                box-shadow: none !important;
+                /* 시각적 점프 방지 */
+            }
+
+            .mode-btn {
+                min-height: 44px;
+            }
+
+            /* 터치 타겟 고정 높이 */
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+    <header class="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div id="app-logo"
+                class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-base md:text-xl">
+                通
+            </div>
+            <h1 id="app-title" class="text-lg md:text-2xl font-bold text-gray-800">통(通)역기</h1>
+        </div>
+        <div class="flex items-center gap-2 md:gap-4">
+            <button id="quiz-open"
+                class="px-2 py-0.5 md:px-3 md:py-1 border rounded-lg hover:bg-gray-50 text-xs md:text-base">📝
+                모의고사</button>
+            <span class="text-[11px] md:text-sm text-gray-600 bg-emerald-100 px-2 md:px-3 py-0.5 md:py-1 rounded-full">
+                세대도 통하고, 지역도 통한다!
+            </span>
+        </div>
+    </header>
+
+    <div class="max-w-5xl mx-auto px-6 py-6">
+
+        <div class="flex flex-col gap-3 mb-6" style="margin-top: 4px;">
+
+            <div class="flex gap-3 overflow-x-auto pb-2 pt-2">
+                <button onclick="selectMode('grandson-to-grandma')" id="mode-grandson-to-grandma"
+                    class="mode-btn mode-btn-active px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-white text-sm md:text-base">
+                    👦 신조어 → 표준어
+                </button>
+                <button onclick="selectMode('grandma-to-grandson')" id="mode-grandma-to-grandson"
+                    class="mode-btn mode-btn-inactive px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-gray-700 text-sm md:text-base">
+                    👵 표준어 → 신조어
+                </button>
+            </div>
+
+            <div class="flex gap-3 overflow-x-auto pb-2 pt-2">
+                <button onclick="selectMode('jeolla-to-standard')" id="mode-jeolla-to-standard"
+                    class="mode-btn mode-btn-inactive px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-gray-700 text-sm md:text-base">
+                    🗣️ 전라도 → 표준어
+                </button>
+                <button onclick="selectMode('gyeongsang-to-standard')" id="mode-gyeongsang-to-standard"
+                    class="mode-btn mode-btn-inactive px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-gray-700 text-sm md:text-base">
+                    📢 경상도 → 표준어
+                </button>
+                <button onclick="selectMode('jeju-to-standard')" id="mode-jeju-to-standard"
+                    class="mode-btn mode-btn-inactive px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-gray-700 text-sm md:text-base">
+                    🍊 제주어 → 표준어
+                </button>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-gray-700" id="input-lang">신조어</span>
+                            <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded" id="input-desc">
+                                신조어 → 정서 번역
+                            </span>
+                        </div>
+                        <button onclick="switchLanguages()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="언어 전환">
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <textarea id="input-text" placeholder="번역할 내용을 입력하세요 (Ctrl+Enter로 통역)"
+                        class="w-full h-48 p-4 text-gray-800 resize-none focus:outline-none text-lg"
+                        oninput="updateCharCount()"></textarea>
+
+                    <div class="flex items-center justify-between mt-3">
+                        <div class="flex gap-2">
+                            <button id="tts-input-btn" onclick="toggleInputTextToSpeech()"
+                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors relative" title="입력 내용 음성 듣기">
+                                <svg id="tts-input-icon" class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                </svg>
+                                <span id="tts-input-status"
+                                    class="hidden absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                            </button>
+                            <button id="mic-btn" onclick="toggleVoiceRecognition()"
+                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors relative" title="음성 입력">
+                                <svg id="mic-icon" class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                                <span id="mic-status"
+                                    class="hidden absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            </button>
+                        </div>
+                        <span class="text-sm text-gray-400" id="char-count">0 / 3000</span>
+                    </div>
+                </div>
+
+                <div id="output-card" class="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 relative rounded-2xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-gray-700" id="output-lang">표준어</span>
+                            <span class="text-xs text-emerald-700 bg-emerald-100 px-2 py-1 rounded" id="output-desc">
+                                정서 번역
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="output-area" class="w-full h-48 p-4 text-gray-800 text-lg overflow-y-auto">
+                        <span class="text-gray-400">번역 결과가 여기에 표시됩니다</span>
+                    </div>
+
+                    <div class="flex items-center justify-between mt-3">
+                        <div class="flex gap-2">
+                            <button id="tts-btn" onclick="toggleTextToSpeech()"
+                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors relative" title="음성 듣기">
+                                <svg id="tts-icon" class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                </svg>
+                                <span id="tts-status"
+                                    class="hidden absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                            </button>
+                            <button onclick="copyToClipboard()"
+                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="복사">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                            <!-- 좋아요 / 싫어요 -->
+                            <button id="like-btn" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="좋아요">
+                                <svg id="like-icon" class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M14 9V5a3 3 0 00-3-3L7 9v11a2 2 0 002 2h6a2 2 0 002-2v-7h3.28a1 1 0 00.96-1.27l-1.6-6A2 2 0 0017.7 4H14z" />
+                                </svg>
+                            </button>
+                            <button id="dislike-btn" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="싫어요">
+                                <svg id="dislike-icon" class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10 15v4a3 3 0 003 3l4-7V4a2 2 0 00-2-2H9a2 2 0 00-2 2v7H3.72a1 1 0 01-.96-1.27l1.6-6A2 2 0 015.3 2H10" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 우측 사이드 패널: 신조어 수정 요청 -->
+                    <div id="edit-request-panel"
+                        class="hidden fixed bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl shadow-xl p-4 overflow-y-auto z-[90]">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="font-semibold">신조어 수정 요청</div>
+                            <button id="edit-request-close" class="p-1 hover:bg-gray-100 rounded">✕</button>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3">
+                            <input id="edit-slang" type="text" placeholder="신조어" class="border rounded-lg p-3">
+                            <input id="edit-current" type="text" placeholder="현재 표준어" class="border rounded-lg p-3">
+                            <input id="edit-proposed" type="text" placeholder="제안 표준어" class="border rounded-lg p-3">
+                            <input id="edit-reason" type="text" placeholder="사유 (선택)" class="border rounded-lg p-3">
+                            <button id="edit-submit"
+                                class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">수정 요청
+                                보내기</button>
+                            <div id="edit-msg" class="text-sm text-gray-600"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 border-t border-gray-200 flex justify-center">
+                <button id="translate-btn" onclick="doTranslate()"
+                    class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all shadow-md hover:shadow-lg">
+                    통역하기
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 bg-gradient-to-r from-emerald-100 to-teal-100 border border-emerald-200 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+                <div class="text-2xl">💡</div>
+                <div>
+                    <h3 class="font-semibold text-emerald-900 mb-1">
+                        AI가 세대와 지역의 소통을 연결합니다
+                    </h3>
+                    <p class="text-sm text-emerald-800">
+                        단순한 번역이 아닌, 문맥과 정서를 살린 '진짜 소통'을 경험해보세요.
+                        세대 간 갈등, 지역 간 소외를 해결하는 AI 소통 비서입니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg">👦</span>
+                    <span id="example-input-title" class="font-semibold text-gray-700"></span>
+                </div>
+                <p id="example-input" class="text-sm text-gray-600"></p>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-lg">👵</span>
+                    <span id="example-output-title" class="font-semibold text-gray-700"></span>
+                </div>
+                <p id="example-output" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관리자 모달: 로그인 → 제안 검토 -->
+    <div id="admin-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[100]">
+        <div
+            class="bg-white w-[calc(100%-1rem)] md:w-full md:max-w-3xl rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[80vh]">
+            <div
+                class="sticky top-0 z-10 bg-white relative flex items-center justify-between pl-3 pr-10 py-2 md:px-4 md:py-3 border-b">
+                <div class="font-semibold">관리자</div>
+                <div class="ml-auto flex items-center gap-1 md:gap-2 flex-shrink-0 whitespace-nowrap">
+                    <button id="admin-logout"
+                        class="px-2 py-1 md:px-3 border rounded hover:bg-gray-50 text-xs md:text-sm">로그아웃</button>
+                    <button id="admin-modal-close"
+                        class="p-2 hover:bg-gray-100 rounded absolute right-2 top-1/2 -translate-y-1/2 z-20 md:static md:z-auto">✕</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+                <!-- 로그인 뷰 -->
+                <div id="admin-login-view" class="p-3 md:p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input id="admin-username-modal" type="text" placeholder="관리자 아이디"
+                        class="border rounded-lg p-2 md:p-3">
+                    <input id="admin-password-modal" type="password" placeholder="관리자 비밀번호"
+                        class="border rounded-lg p-2 md:p-3">
+                    <button id="admin-login-btn-modal"
+                        class="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900">로그인</button>
+                    <div id="admin-login-msg" class="md:col-span-3 text-sm text-gray-600"></div>
+                </div>
+                <!-- 리뷰 뷰 -->
+                <div id="admin-review-view" class="p-3 md:p-4 hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="font-semibold text-gray-800">제안 목록</div>
+                        <div class="flex items-center gap-2">
+                            <button id="suggest-refresh-modal"
+                                class="px-3 py-1 border rounded hover:bg-gray-50">새로고침</button>
+                            <button id="suggest-approve-modal"
+                                class="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700">선택
+                                승인</button>
+                            <button id="suggest-reject-modal"
+                                class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">선택 거절</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="sticky top-0 bg-white">
+                                <tr class="border-b">
+                                    <th class="p-2"><input type="checkbox" id="suggest-check-all-modal"></th>
+                                    <th class="p-2 text-left">ID</th>
+                                    <th class="p-2 text-left">신조어</th>
+                                    <th class="p-2 text-left">표준어</th>
+                                    <th class="p-2 text-left">설명</th>
+                                    <th class="p-2 text-left">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suggest-tbody-modal"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- 사전 관리 -->
+                    <div class="mt-6 flex items-center justify-between mb-2">
+                        <div class="font-semibold text-gray-800">사전 관리</div>
+                        <div class="flex items-center gap-2">
+                            <button id="slang-refresh-modal"
+                                class="px-3 py-1 border rounded hover:bg-gray-50">새로고침</button>
+                            <button id="slang-delete-modal"
+                                class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">선택 삭제</button>
+                        </div>
+                    </div>
+                    <!-- 사전 추가 폼 -->
+                    <div class="p-3 border rounded-lg mb-3 bg-white">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <input id="slang-add-slang-modal" type="text" placeholder="신조어"
+                                class="border rounded-lg p-2">
+                            <input id="slang-add-standard-modal" type="text" placeholder="표준어"
+                                class="border rounded-lg p-2">
+                            <input id="slang-add-explain-modal" type="text" placeholder="설명(선택)"
+                                class="border rounded-lg p-2">
+                            <button id="slang-add-modal"
+                                class="px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">사전 추가</button>
+                        </div>
+                        <div id="slang-add-msg-modal" class="text-sm text-gray-600 mt-2"></div>
+                    </div>
+                    <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="sticky top-0 bg-white">
+                                <tr class="border-b">
+                                    <th class="p-2"><input type="checkbox" id="slang-check-all-modal"></th>
+                                    <th class="p-2 text-left">신조어</th>
+                                    <th class="p-2 text-left">표준어</th>
+                                    <th class="p-2 text-left">설명</th>
+                                    <th class="p-2 text-left">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="slang-tbody-modal"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사전 편집 모달 -->
+    <div id="slang-edit-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[110]">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b">
+                <div class="font-semibold">사전 항목 편집</div>
+                <button id="slang-edit-close" class="p-2 hover:bg-gray-100 rounded">✕</button>
+            </div>
+            <div class="p-4 grid grid-cols-1 gap-3">
+                <input id="slang-edit-slang" type="text" placeholder="신조어" class="border rounded-lg p-3">
+                <input id="slang-edit-standard" type="text" placeholder="표준어" class="border rounded-lg p-3">
+                <input id="slang-edit-explain" type="text" placeholder="설명(선택)" class="border rounded-lg p-3">
+                <div class="flex items-center justify-end gap-2 mt-1">
+                    <button id="slang-edit-cancel" class="px-4 py-2 border rounded hover:bg-gray-50">취소</button>
+                    <button id="slang-edit-save"
+                        class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">저장</button>
+                </div>
+                <div id="slang-edit-msg" class="text-sm text-gray-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모의고사 모달 -->
+    <div id="quiz-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[120]">
+        <div class="bg-white w-full max-w-3xl rounded-xl shadow-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b">
+                <div class="font-semibold">신조어 모의고사</div>
+                <button id="quiz-close" class="p-2 hover:bg-gray-100 rounded">✕</button>
+            </div>
+            <div class="p-4">
+                <div id="quiz-view">
+                    <div class="text-sm text-gray-600 mb-2" id="quiz-progress">1 / 10</div>
+                    <div class="text-lg font-semibold mb-3" id="quiz-question">문항 텍스트</div>
+                    <div id="quiz-choices" class="grid gap-2"></div>
+                    <div class="flex items-center justify-between mt-4 hidden">
+                        <button id="quiz-prev" class="px-3 py-2 border rounded hover:bg-gray-50">이전</button>
+                        <button id="quiz-next"
+                            class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">다음</button>
+                    </div>
+                </div>
+                <div id="quiz-result" class="hidden">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold mb-2">결과</div>
+                        <div class="text-lg mb-1">점수: <span id="quiz-score">0</span>/10</div>
+                        <div class="text-lg">등급: <span id="quiz-grade" class="font-semibold">9</span>등급</div>
+                        <button id="quiz-restart" class="mt-4 px-4 py-2 border rounded hover:bg-gray-50">다시 풀기</button>
+                    </div>
+                </div>
+                <div id="quiz-msg" class="text-sm text-gray-600 mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Route localhost API calls to current origin when deployed
+        (function () {
+            try {
+                var API_BASE = window.location.origin;
+                var _fetch = window.fetch;
+                window.fetch = function (input, init) {
+                    if (typeof input === 'string' && input.indexOf('http://127.0.0.1:8000') === 0) {
+                        input = input.replace('http://127.0.0.1:8000', API_BASE);
+                    }
+                    return _fetch(input, init);
+                };
+            } catch (e) {
+                console.warn('fetch rewriter init failed:', e);
+            }
+        })();
+
+        let currentMode = 'grandson-to-grandma';
+        let recognition = null;
+        let isListening = false;
+        let finalTranscript = ''; // 음성 인식 최종 결과 저장
+        let speechSynthesis = null;
+        let isSpeaking = false;
+        let isSpeakingInput = false;
+        let isTranslating = false; // 통역 진행 중에는 탭 전환 금지
+        let lastFinalChunk = ''; // 바로 직전에 추가한 최종 청크(중복 방지)
+
+        // Web Speech Recognition 초기화
+        function initSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                console.warn('이 브라우저는 음성 인식을 지원하지 않습니다.');
+                const micBtn = document.getElementById('mic-btn');
+                if (micBtn) {
+                    micBtn.style.display = 'none';
+                }
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ko-KR'; // 한국어 설정 (한국 표준어 및 방언 인식)
+            recognition.continuous = true; // true: 사용자가 직접 중지할 때까지 계속 인식 (타임아웃 방지)
+            recognition.interimResults = true; // 중간 결과도 표시 (실시간 피드백)
+            recognition.maxAlternatives = 1; // 최대 대안 수
+
+            recognition.onstart = () => {
+                isListening = true;
+                updateMicButton(true);
+                console.log('음성 인식 시작');
+                finalTranscript = ''; // 새로운 인식 시작 시 초기화
+                lastFinalChunk = ''; // 중복 방지 버퍼 초기화
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let newFinalText = '';
+
+                // 중간 결과와 최종 결과 분리
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        newFinalText += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                const inputText = document.getElementById('input-text');
+
+                // 최종 결과가 있으면 즉시 적용 (중복 방지)
+                if (newFinalText.trim()) {
+                    const chunk = newFinalText.trim();
+                    // 동일 청크가 연속 전달되면 무시
+                    if (lastFinalChunk === chunk) {
+                        return;
+                    }
+                    const currentText = inputText.value.trim();
+                    // 이미 텍스트 끝이 동일 청크로 끝나면 중복 추가 금지
+                    if (currentText && currentText.endsWith(chunk)) {
+                        lastFinalChunk = chunk;
+                        return;
+                    }
+                    // 누적 저장 + 안전한 공백 처리 (onresult만이 입력을 갱신)
+                    inputText.value = currentText
+                        ? (currentText + (currentText.endsWith(' ') ? '' : ' ') + chunk)
+                        : chunk;
+                    lastFinalChunk = chunk;
+                    finalTranscript = ''; // onend에서 다시 붙는 일 방지
+                    updateCharCount();
+                    console.log('인식된 텍스트:', chunk);
+                }
+
+                // 중간 결과는 로그만
+                if (interimTranscript) {
+                    console.log('인식 중 (임시):', interimTranscript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('음성 인식 오류:', event.error);
+
+                let errorMsg = '음성 인식 오류가 발생했습니다.';
+
+                if (event.error === 'no-speech') {
+                    // no-speech는 경고만, continuous=true일 때 계속 진행 가능
+                    // 상태를 유지하여 계속 인식하도록 함
+                    console.log('no-speech 에러 발생, 계속 인식 중... (음성 없음)');
+                    // isListening 상태를 유지하여 계속 인식
+                    return; // 상태를 false로 변경하지 않음
+                } else if (event.error === 'audio-capture') {
+                    isListening = false; // 상태 업데이트
+                    errorMsg = '마이크에 접근할 수 없습니다. 마이크가 연결되어 있는지 확인하세요.';
+                    updateMicButton(false);
+                } else if (event.error === 'not-allowed') {
+                    errorMsg = '마이크 권한이 거부되었습니다. 브라우저 설정에서 마이크 권한을 허용해주세요.';
+                    updateMicButton(false);
+                } else if (event.error === 'network') {
+                    errorMsg = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인하세요.';
+                    updateMicButton(false);
+                } else if (event.error === 'aborted') {
+                    // 중지 명령은 에러가 아님
+                    console.log('음성 인식이 중지되었습니다.');
+                    updateMicButton(false);
+                    return;
+                } else {
+                    isListening = false; // 상태 업데이트
+                    errorMsg = `음성 인식 오류: ${event.error}. 다시 시도해주세요.`;
+                    updateMicButton(false);
+                }
+
+                // 심각한 에러가 아닐 때만 알림 표시
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    alert(errorMsg);
+                }
+            };
+
+            recognition.onend = () => {
+                console.log('음성 인식 종료 이벤트 발생');
+
+                // continuous=true일 때는 자동 재시작하지 않음
+                // 사용자가 명시적으로 중지한 경우에만 종료
+                if (!isListening) {
+                    // 정리만 수행 (입력에 추가는 onresult에서만 처리)
+                    finalTranscript = '';
+                    updateMicButton(false);
+                    console.log('한국어 음성 인식 종료');
+                    return;
+                }
+
+                // 예기치 않은 종료: 재시작하지 않고 사용자 안내
+                console.warn('음성 인식이 예기치 않게 종료되었습니다. 버튼을 다시 클릭하여 재시작하세요.');
+                isListening = false;
+                updateMicButton(false);
+                finalTranscript = '';
+            };
+        }
+
+        function updateMicButton(listening) {
+            const micBtn = document.getElementById('mic-btn');
+            const micIcon = document.getElementById('mic-icon');
+            const micStatus = document.getElementById('mic-status');
+
+            if (!micBtn) return;
+
+            if (listening) {
+                micBtn.classList.remove('hover:bg-gray-100');
+                micBtn.classList.add('bg-red-100');
+                micIcon.classList.remove('text-gray-500');
+                micIcon.classList.add('text-red-600');
+                micStatus.classList.remove('hidden');
+                micBtn.title = '음성 인식 중... (클릭하여 중지)';
+            } else {
+                micBtn.classList.remove('bg-red-100');
+                micBtn.classList.add('hover:bg-gray-100');
+                micIcon.classList.remove('text-red-600');
+                micIcon.classList.add('text-gray-500');
+                micStatus.classList.add('hidden');
+                micBtn.title = '음성 입력';
+            }
+        }
+
+        function toggleVoiceRecognition() {
+            if (!recognition) {
+                alert('음성 인식이 초기화되지 않았습니다. 브라우저가 지원하지 않을 수 있습니다.');
+                return;
+            }
+
+            if (isListening) {
+                // 중지
+                try {
+                    recognition.stop();
+                    isListening = false;
+                    finalTranscript = ''; // 정리
+                    updateMicButton(false);
+                    console.log('음성 인식 수동 중지');
+                } catch (error) {
+                    console.error('음성 인식 중지 오류:', error);
+                    // 강제 상태 초기화
+                    isListening = false;
+                    finalTranscript = '';
+                    updateMicButton(false);
+                }
+            } else {
+                // 시작
+                try {
+                    // 이전 인식이 완전히 종료되었는지 확인
+                    if (recognition.state && recognition.state !== 'idle') {
+                        console.warn('이전 인식이 아직 진행 중입니다. 잠시 기다린 후 다시 시도해주세요.');
+                        return;
+                    }
+
+                    finalTranscript = ''; // 새로운 인식 시작 시 초기화
+                    lastFinalChunk = ''; // 중복 방지 버퍼 초기화
+                    recognition.start();
+                    console.log('한국어 음성 인식 시작 (ko-KR)');
+                } catch (error) {
+                    console.error('음성 인식 시작 실패:', error);
+                    isListening = false;
+                    updateMicButton(false);
+
+                    let errorMsg = '음성 인식을 시작할 수 없습니다.';
+                    if (error.message && error.message.includes('already started')) {
+                        errorMsg = '이미 음성 인식이 실행 중입니다.';
+                        // 상태 동기화
+                        isListening = true;
+                        updateMicButton(true);
+                    } else if (error.message && error.message.includes('not-allowed')) {
+                        errorMsg = '마이크 권한이 필요합니다. 브라우저 설정에서 마이크 권한을 허용해주세요.';
+                    } else {
+                        errorMsg += '\n\n힌트: 마이크 권한을 확인하고, 다른 탭에서 마이크를 사용 중이 아닌지 확인하세요.';
+                    }
+
+                    alert(errorMsg);
+                }
+            }
+        }
+
+        const modes = {
+            'grandson-to-grandma': {
+                from: '신조어',
+                to: '표준어',
+                fromDesc: '신조어 → 정서 번역',
+                toDesc: '정서 번역'
+            },
+            'grandma-to-grandson': {
+                from: '표준어',
+                to: '신조어',
+                fromDesc: '다정함 → 유머 번역',
+                toDesc: '유머 번역'
+            },
+            'jeolla-to-standard': {
+                from: '전라도 사투리',
+                to: '표준어',
+                fromDesc: '전라도 방언 인식',
+                toDesc: '표준어 변환'
+            },
+            'gyeongsang-to-standard': {
+                from: '경상도 사투리',
+                to: '표준어',
+                fromDesc: '경상도 방언 인식',
+                toDesc: '표준어 변환'
+            },
+            'jeju-to-standard': {
+                from: '제주어',
+                to: '표준어',
+                fromDesc: '제주 방언 인식',
+                toDesc: '표준어 변환'
+            }
+        };
+
+        // 모드별 예시 문구
+        const modeExamples = {
+            'grandson-to-grandma': {
+                input: '"이모! 저 \'알잘딱깔센\'하게 과제 끝내고 \'킹받네\' 하다가 \'당모치\' 먹으러 가요."',
+                output: '"이모! 저 알아서 잘 딱 깔끔하고 센스있게 과제 다 끝냈어요. 왕짜증나네 하다가 당연히 모든 치킨은 옳으니까 먹으러 가요."'
+            },
+            'grandma-to-grandson': {
+                input: '"오늘 숙제 다 끝내고 치킨 먹으러 가자."',
+                output: '"오늘 과제 쿨 완료하고 당모치 가자!"'
+            },
+            'jeolla-to-standard': {
+                input: '"거 참 말허드랑께, 얼릉 와보랑께."',
+                output: '"거 참 말하더라니까, 빨리 와보라니까."'
+            },
+            'gyeongsang-to-standard': {
+                input: '"그라믄 이건 와이리어, 얼른 와라."',
+                output: '"그러면 이건 왜 이래, 얼른 와라."'
+            },
+            'jeju-to-standard': {
+                input: '"혼저 옵서예, 간세나게 보난 좋수다."',
+                output: '"어서 오세요, 천천히 보니 좋습니다."'
+            }
+        };
+
+        function updateExamples() {
+            const ex = modeExamples[currentMode] || modeExamples['grandson-to-grandma'];
+            const inEl = document.getElementById('example-input');
+            const outEl = document.getElementById('example-output');
+            if (inEl) inEl.textContent = ex.input;
+            if (outEl) outEl.textContent = ex.output;
+        }
+
+        function updateExampleTitles() {
+            const inTitle = document.getElementById('example-input-title');
+            const outTitle = document.getElementById('example-output-title');
+            let inText = '예시: 입력';
+            let outText = '예시: 출력';
+            switch (currentMode) {
+                case 'grandson-to-grandma':
+                    inText = '예시: 신조어 입력';
+                    outText = '예시: 표준어 출력';
+                    break;
+                case 'grandma-to-grandson':
+                    inText = '예시: 표준어 입력';
+                    outText = '예시: 신조어 출력';
+                    break;
+                case 'jeolla-to-standard':
+                    inText = '예시: 전라도 입력';
+                    outText = '예시: 표준어 출력';
+                    break;
+                case 'gyeongsang-to-standard':
+                    inText = '예시: 경상도 입력';
+                    outText = '예시: 표준어 출력';
+                    break;
+                case 'jeju-to-standard':
+                    inText = '예시: 제주어 입력';
+                    outText = '예시: 표준어 출력';
+                    break;
+            }
+            if (inTitle) inTitle.textContent = inText;
+            if (outTitle) outTitle.textContent = outText;
+        }
+
+        const apiModeMap = {
+            'grandson-to-grandma': 'A',
+            'grandma-to-grandson': 'B',
+            'jeolla-to-standard': 'C',
+            'gyeongsang-to-standard': 'C',
+            'jeju-to-standard': 'C'
+        };
+
+        function selectMode(mode) {
+            if (isTranslating) {
+                alert('통역이 진행 중입니다. 잠시만 기다려주세요.');
+                return;
+            }
+            currentMode = mode;
+
+            // 버튼 스타일 업데이트
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.className = 'mode-btn mode-btn-inactive px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-gray-700';
+            });
+            const selectedBtn = document.getElementById('mode-' + mode);
+            selectedBtn.className = 'mode-btn mode-btn-active px-4 py-2 md:px-6 md:py-3 rounded-xl font-semibold whitespace-nowrap transition-all text-white';
+
+            // 라벨 업데이트
+            document.getElementById('input-lang').textContent = modes[mode].from;
+            document.getElementById('output-lang').textContent = modes[mode].to;
+            document.getElementById('input-desc').textContent = modes[mode].fromDesc;
+            document.getElementById('output-desc').textContent = modes[mode].toDesc;
+            updateExamples();
+            updateExampleTitles();
+            updateQuizVisibility();
+
+            // 탭 전환 시 입력/출력 초기화
+            const inputEl = document.getElementById('input-text');
+            inputEl.value = '';
+            updateCharCount();
+            document.getElementById('output-area').innerHTML = '<span class="text-gray-400">번역 결과가 여기에 표시됩니다</span>';
+
+            // (삭제됨) 하단 CSV 섹션은 제거되었습니다. 해당 섹션 제어 로직을 비활성화합니다.
+            // 번역 결과는 우측 패널에서만 처리합니다.
+        }
+
+        function switchLanguages() {
+            const modeMap = {
+                'grandson-to-grandma': 'grandma-to-grandson',
+                'grandma-to-grandson': 'grandson-to-grandma',
+                'jeolla-to-standard': 'jeolla-to-standard',
+                'gyeongsang-to-standard': 'gyeongsang-to-standard',
+                'jeju-to-standard': 'jeju-to-standard' // 역방향 미지원
+            };
+
+            const newMode = modeMap[currentMode];
+            if (!newMode || newMode === currentMode) return;
+
+            const outputText = document.getElementById('output-area').textContent;
+            selectMode(newMode);
+
+            if (outputText && outputText !== '번역 결과가 여기에 표시됩니다') {
+                document.getElementById('input-text').value = outputText;
+                document.getElementById('output-area').innerHTML = '<span class="text-gray-400">번역 결과가 여기에 표시됩니다</span>';
+            }
+
+            updateCharCount();
+        }
+
+        function updateCharCount() {
+            const text = document.getElementById('input-text').value;
+            document.getElementById('char-count').textContent = text.length + ' / 3000';
+        }
+
+        function copyToClipboard() {
+            const outputText = document.getElementById('output-area').textContent;
+            if (outputText && outputText !== '번역 결과가 여기에 표시됩니다') {
+                navigator.clipboard.writeText(outputText).then(() => {
+                    alert('복사되었습니다!');
+                });
+            }
+        }
+
+        async function doTranslate() {
+            const inputText = document.getElementById('input-text').value;
+            if (!inputText.trim()) return;
+
+            const outputArea = document.getElementById('output-area');
+            const translateBtn = document.getElementById('translate-btn');
+
+            outputArea.innerHTML = `
+                <div class="flex items-center gap-2 text-gray-500">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce-1"></div>
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce-2"></div>
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce-3"></div>
+                    <span class="ml-2">통역 중...</span>
+                </div>
+            `;
+            translateBtn.disabled = true;
+            translateBtn.textContent = '통역 중...';
+            // 통역 시작: 탭 비활성화
+            isTranslating = true;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-60', 'cursor-not-allowed');
+            });
+
+            const apiMode = apiModeMap[currentMode];
+            if (!apiMode) {
+                outputArea.textContent = '오류: 유효하지 않은 모드입니다.';
+                return;
+            }
+
+            try {
+                const API_URL = 'http://127.0.0.1:8000/translate';
+
+                let region = '전라도'; // 기본값
+                if (currentMode === 'gyeongsang-to-standard') {
+                    region = '경상도';
+                } else if (currentMode === 'jeju-to-standard') {
+                    region = '제주도';
+                }
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: inputText,
+                        mode: apiMode,
+                        region: region
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `서버 오류: ${response.status}`);
+                }
+
+                const data = await response.json();
+                outputArea.textContent = data.result;
+                // 최근 치환 정보 저장(싫어요 패널 미리채움 용)
+                window.__lastReplaced__ = (data.replaced || '').trim();
+
+                // 번역 직후 우측 패널 입력란 자동 채움(하단 섹션 제거에 따른 단순화)
+                try {
+                    if (currentMode === 'grandson-to-grandma') {
+                        const replaced = (data.replaced || '').trim();
+                        const es = document.getElementById('edit-slang');
+                        const ec = document.getElementById('edit-current');
+                        const ep = document.getElementById('edit-proposed');
+                        let slang = '';
+                        let currentStd = '';
+                        if (replaced) {
+                            const s = replaced.split(';')[0];
+                            if (s && s.includes('→')) {
+                                const parts = s.split('→');
+                                slang = parts[0].trim().replace(/≈.*$/, '').trim();
+                                currentStd = parts[1].trim();
+                            }
+                        } else {
+                            const inputVal = document.getElementById('input-text').value.trim();
+                            slang = inputVal.length <= 20 ? inputVal : '';
+                            currentStd = data.result || '';
+                        }
+                        if (es) es.value = slang;
+                        if (ec) ec.value = currentStd;
+                        if (ep) ep.value = '';
+                        if (typeof applyProtectedLocks === 'function') applyProtectedLocks();
+                    }
+                } catch (e) { /* no-op */ }
+
+            } catch (error) {
+                console.error('API 호출 오류:', error);
+                outputArea.textContent = `[연결 오류] ${error.message}\n\nPython 백엔드 서버(uvicorn main:app --reload)가 실행 중인지 확인하세요.`;
+            } finally {
+                translateBtn.disabled = false;
+                translateBtn.textContent = '통역하기';
+                // 통역 종료: 탭 활성화
+                isTranslating = false;
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                });
+            }
+        }
+
+        // CSV 사전 추가
+        document.addEventListener('click', async (e) => {
+            if (e.target && e.target.id === 'csv-add-btn') {
+                const slang = document.getElementById('csv-slang').value.trim();
+                const standard = document.getElementById('csv-standard').value.trim();
+                const msg = document.getElementById('csv-add-msg');
+                if (!slang || !standard) {
+                    msg.textContent = '신조어와 표준어를 모두 입력하세요.';
+                    msg.className = 'text-sm text-red-600';
+                    return;
+                }
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    const adminToken = (window.__ADMIN_TOKEN__ || '').trim();
+                    if (adminToken) headers['X-Admin-Token'] = adminToken;
+                    const resp = await fetch('http://127.0.0.1:8000/slang', {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify({ slang, standard, explain: document.getElementById('csv-explain').value.trim() })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.detail || '추가 실패');
+                    }
+                    // 입력란 초기화
+                    document.getElementById('csv-slang').value = '';
+                    document.getElementById('csv-standard').value = '';
+                    const exEl = document.getElementById('csv-explain');
+                    if (exEl) exEl.value = '';
+                    msg.textContent = '추가되었습니다. 다음 요청부터 반영됩니다.';
+                    msg.className = 'text-sm text-emerald-700';
+                } catch (err) {
+                    msg.textContent = `오류: ${err.message}`;
+                    msg.className = 'text-sm text-red-600';
+                }
+            }
+            if (e.target && e.target.id === 'csv-suggest-btn') {
+                // 하단 섹션에서는 제출을 하지 않습니다. 사용자에게 "싫어요" 경로 안내
+                const msg = document.getElementById('csv-add-msg');
+                if (msg) {
+                    msg.textContent = '오른쪽 패널에서 한 번에 제출하세요. 출력 카드의 싫어요 버튼을 눌러 여세요.';
+                    msg.className = 'text-sm text-emerald-700';
+                }
+            }
+            if (e.target && e.target.id === 'admin-login-toggle') {
+                openAdminModal();
+            }
+            if (e.target && (e.target.id === 'admin-login-btn-modal' || e.target.closest('#admin-login-btn-modal'))) {
+                const id = document.getElementById('admin-username-modal').value.trim();
+                const pw = document.getElementById('admin-password-modal').value.trim();
+                const msg = document.getElementById('admin-login-msg');
+                if (id === 'admin' && pw === 'admin') {
+                    window.__ADMIN_TOKEN__ = 'admin';
+                    const addBtn = document.getElementById('csv-add-btn');
+                    if (addBtn) {
+                        addBtn.classList.remove('hidden');
+                        addBtn.title = '관리자 전용(로그인됨)';
+                    }
+                    document.getElementById('admin-login-view').classList.add('hidden');
+                    document.getElementById('admin-review-view').classList.remove('hidden');
+                    // 제안 목록과 사전 목록을 모두 즉시 로드
+                    loadSuggestionsModal();
+                    await loadSlangModal();
+                    // 사전 관리 섹션으로 스크롤
+                    const slangTable = document.getElementById('slang-tbody-modal');
+                    if (slangTable && slangTable.scrollIntoView) slangTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    msg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+                    msg.className = 'text-sm text-red-600';
+                }
+            }
+            if (e.target && e.target.id === 'admin-modal-close') {
+                closeAdminModal();
+            }
+            if (e.target && e.target.id === 'admin-logout') {
+                window.__ADMIN_TOKEN__ = '';
+                const addBtn = document.getElementById('csv-add-btn');
+                if (addBtn) { addBtn.classList.add('hidden'); addBtn.title = '관리자 전용'; }
+                // 로그인 화면으로 전환 (모달 유지)
+                document.getElementById('admin-review-view').classList.add('hidden');
+                document.getElementById('admin-login-view').classList.remove('hidden');
+                // 입력 초기화
+                const u = document.getElementById('admin-username-modal');
+                const p = document.getElementById('admin-password-modal');
+                const m = document.getElementById('admin-login-msg');
+                if (u) u.value = '';
+                if (p) p.value = '';
+                if (m) { m.textContent = '로그아웃되었습니다.'; m.className = 'text-sm text-gray-600'; }
+                // 메인 페이지 재시작(새로고침)
+                location.reload();
+            }
+            if (e.target && e.target.id === 'suggest-refresh-modal') {
+                await loadSuggestionsModal();
+            }
+            if (e.target && e.target.id === 'slang-refresh-modal') {
+                await loadSlangModal();
+            }
+            if (e.target && e.target.id === 'slang-add-modal') {
+                const slang = document.getElementById('slang-add-slang-modal').value.trim();
+                const standard = document.getElementById('slang-add-standard-modal').value.trim();
+                const explain = document.getElementById('slang-add-explain-modal').value.trim();
+                const msg = document.getElementById('slang-add-msg-modal');
+                if (!slang || !standard) {
+                    if (msg) { msg.textContent = '신조어와 표준어는 필수입니다.'; msg.className = 'text-sm text-red-600 mt-2'; }
+                    return;
+                }
+                try {
+                    const adminToken = (window.__ADMIN_TOKEN__ || '').trim();
+                    const resp = await fetch('http://127.0.0.1:8000/slang', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...(adminToken ? { 'X-Admin-Token': adminToken } : {}) },
+                        body: JSON.stringify({ slang, standard, explain })
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        throw new Error(err.detail || resp.status);
+                    }
+                    if (msg) { msg.textContent = '추가되었습니다.'; msg.className = 'text-sm text-emerald-700 mt-2'; }
+                    document.getElementById('slang-add-slang-modal').value = '';
+                    document.getElementById('slang-add-standard-modal').value = '';
+                    document.getElementById('slang-add-explain-modal').value = '';
+                    // 모달 내 데이터 새로고침 (사전 + 제안 목록)
+                    await loadSlangModal();
+                    try { await loadSuggestionsModal(); } catch (e) { /* optional */ }
+                    // 상단으로 스크롤하여 추가 폼이 보이도록
+                    try { (document.querySelector('#admin-modal .overflow-y-auto') || document.querySelector('#admin-modal')).scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { }
+                } catch (err) {
+                    if (msg) { msg.textContent = '추가 실패: ' + err.message; msg.className = 'text-sm text-red-600 mt-2'; }
+                }
+            }
+            if (e.target && e.target.id === 'slang-delete-modal') {
+                const ids = Array.from(document.querySelectorAll('.slang-check-modal:checked')).map(el => el.getAttribute('data-slang')).filter(Boolean);
+                if (!ids.length) { alert('선택된 항목이 없습니다.'); return; }
+                const adminToken = (window.__ADMIN_TOKEN__ || '').trim();
+                for (const slang of ids) {
+                    await fetch('http://127.0.0.1:8000/slang/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...(adminToken ? { 'X-Admin-Token': adminToken } : {}) },
+                        body: JSON.stringify({ slang })
+                    });
+                }
+                await loadSlangModal();
+            }
+            if (e.target && e.target.classList.contains('slang-edit')) {
+                const tr = e.target.closest('tr');
+                const slang = tr.getAttribute('data-slang');
+                const curStandard = tr.getAttribute('data-standard') || '';
+                const curExplain = tr.getAttribute('data-explain') || '';
+                window.__EDIT_ORIGINAL_SLANG__ = slang;
+                document.getElementById('slang-edit-slang').value = slang;
+                document.getElementById('slang-edit-standard').value = curStandard;
+                document.getElementById('slang-edit-explain').value = curExplain;
+                openSlangEditModal();
+            }
+            if (e.target && e.target.classList.contains('suggest-edit-btn')) {
+                const tr = e.target.closest('tr');
+                const slang = tr.getAttribute('data-slang');
+                const std = tr.getAttribute('data-standard') || '';
+                const explain = tr.getAttribute('data-explain') || '';
+                const type = tr.getAttribute('data-type');
+                // type이 'edit'인 경우 현재 표준어와 제안 표준어가 분리되어 있음
+                if (type === 'edit') {
+                    const currentStd = tr.getAttribute('data-current-standard') || '';
+                    const proposedStd = tr.getAttribute('data-proposed-standard') || '';
+                    const reason = tr.getAttribute('data-reason') || '';
+                    window.__EDIT_ORIGINAL_SLANG__ = slang;
+                    document.getElementById('slang-edit-slang').value = slang;
+                    document.getElementById('slang-edit-standard').value = proposedStd || std;
+                    document.getElementById('slang-edit-explain').value = explain;
+                    openSlangEditModal();
+                } else {
+                    // type이 'add'인 경우 일반 추가 항목
+                    window.__EDIT_ORIGINAL_SLANG__ = slang;
+                    document.getElementById('slang-edit-slang').value = slang;
+                    document.getElementById('slang-edit-standard').value = std;
+                    document.getElementById('slang-edit-explain').value = explain;
+                    openSlangEditModal();
+                }
+            }
+            if (e.target && (e.target.id === 'slang-edit-close' || e.target.id === 'slang-edit-cancel')) {
+                closeSlangEditModal();
+            }
+            if (e.target && e.target.id === 'slang-edit-save') {
+                const original = window.__EDIT_ORIGINAL_SLANG__;
+                const slang = document.getElementById('slang-edit-slang').value.trim();
+                const standard = document.getElementById('slang-edit-standard').value.trim();
+                const explain = document.getElementById('slang-edit-explain').value.trim();
+                const msg = document.getElementById('slang-edit-msg');
+                if (!slang || !standard) { msg.textContent = '신조어와 표준어는 필수입니다.'; msg.className = 'text-sm text-red-600'; return; }
+                const adminToken = (window.__ADMIN_TOKEN__ || '').trim();
+                const resp = await fetch('http://127.0.0.1:8000/slang/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...(adminToken ? { 'X-Admin-Token': adminToken } : {}) },
+                    body: JSON.stringify({ original_slang: original, slang, standard, explain })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    msg.textContent = '수정 실패: ' + (err.detail || resp.status);
+                    msg.className = 'text-sm text-red-600';
+                } else {
+                    msg.textContent = '저장되었습니다.';
+                    msg.className = 'text-sm text-emerald-700';
+                    await loadSlangModal();
+                    setTimeout(() => { closeSlangEditModal(); }, 600);
+                }
+            }
+            if (e.target && (e.target.id === 'suggest-approve-modal' || e.target.id === 'suggest-reject-modal')) {
+                const ids = Array.from(document.querySelectorAll('.suggest-check-modal:checked')).map(ch => parseInt(ch.value)).filter(n => !isNaN(n));
+                if (!ids.length) { alert('선택된 항목이 없습니다.'); return; }
+                const endpoint = e.target.id === 'suggest-approve-modal' ? 'approve' : 'reject';
+                try {
+                    const resp = await fetch(`http://127.0.0.1:8000/suggest/${endpoint}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids })
+                    });
+                    const js = await resp.json();
+                    alert(`${endpoint === 'approve' ? '승인' : '거절'} 처리 완료`);
+                    // 모달 유지: 승인/거절 후 목록만 새로고침
+                    await loadSuggestionsModal();
+                } catch (err) {
+                    alert(`처리 실패: ${err.message}`);
+                }
+            }
+            if (e.target && e.target.id === 'suggest-manage-toggle') {
+                const panel = document.getElementById('suggest-manage-panel');
+                panel.classList.toggle('hidden');
+                if (!panel.classList.contains('hidden')) {
+                    await loadSuggestions();
+                }
+            }
+            if (e.target && e.target.id === 'suggest-refresh') {
+                await loadSuggestions();
+            }
+            if (e.target && (e.target.id === 'suggest-approve' || e.target.id === 'suggest-reject')) {
+                const ids = Array.from(document.querySelectorAll('.suggest-check:checked')).map(ch => parseInt(ch.value)).filter(n => !isNaN(n));
+                if (!ids.length) { alert('선택된 항목이 없습니다.'); return; }
+                const endpoint = e.target.id === 'suggest-approve' ? 'approve' : 'reject';
+                try {
+                    const resp = await fetch(`http://127.0.0.1:8000/suggest/${endpoint}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids })
+                    });
+                    const js = await resp.json();
+                    alert(`${endpoint === 'approve' ? '승인' : '거절'} 처리 완료`);
+                    if (endpoint === 'approve') {
+                        location.reload();
+                        return;
+                    }
+                    await loadSuggestions();
+                } catch (err) {
+                    alert(`처리 실패: ${err.message}`);
+                }
+            }
+            // 모의고사
+            if (e.target && e.target.id === 'quiz-open') {
+                await quizStart();
+            }
+            if (e.target && e.target.id === 'quiz-close') {
+                closeQuiz();
+            }
+            if (e.target && e.target.id === 'quiz-prev') {
+                quizPrev();
+            }
+            if (e.target && e.target.id === 'quiz-next') {
+                quizNext();
+            }
+            if (e.target && e.target.id === 'quiz-restart') {
+                await quizStart();
+            }
+
+            // 좋아요/싫어요
+            if (e.target && (e.target.id === 'like-btn' || e.target.closest('#like-btn'))) {
+                const icon = document.getElementById('like-icon');
+                icon.classList.toggle('text-emerald-600');
+                if (icon.getAttribute('fill') === 'currentColor') {
+                    icon.setAttribute('fill', 'none');
+                } else {
+                    icon.setAttribute('fill', 'currentColor');
+                }
+            }
+            if (e.target && (e.target.id === 'dislike-btn' || e.target.closest('#dislike-btn'))) {
+                // "싫어요" 시 현재 문맥에서 값 추출 → 우측 패널에 채워 열기
+                const { slang, current } = await computeDislikePrefillValues();
+                if (window.openEditPanelWithValues) {
+                    window.openEditPanelWithValues(slang, current, '', '');
+                    // 제안 표준어 입력에 포커스 유도
+                    const pr = document.getElementById('edit-proposed');
+                    if (pr) pr.focus();
+                } else {
+                    openEditPanel();
+                    prefillEditPanelFromReplaced();
+                }
+            }
+            if (e.target && e.target.id === 'edit-request-close') {
+                closeEditPanel();
+            }
+            if (e.target && e.target.id === 'edit-submit') {
+                await submitEditRequest();
+            }
+        });
+
+        async function loadSuggestions() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/suggest/list');
+                const data = await res.json();
+                const items = data.items || [];
+                const tbody = document.getElementById('suggest-tbody');
+                tbody.innerHTML = '';
+                for (const it of items) {
+                    const std = it.standard ?? it.proposed_standard ?? '';
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b';
+                    tr.innerHTML = `
+                        <td class="p-2"><input type="checkbox" class="suggest-check" value="${it.id}"></td>
+                        <td class="p-2">${it.id}</td>
+                        <td class="p-2">${escapeHtml(it.slang)}</td>
+                        <td class="p-2">${escapeHtml(std)}</td>
+                        <td class="p-2">${escapeHtml(it.explain || '')}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+                const all = document.getElementById('suggest-check-all');
+                if (all) {
+                    all.checked = false;
+                    all.onclick = () => {
+                        document.querySelectorAll('.suggest-check').forEach(ch => { ch.checked = all.checked; });
+                    };
+                }
+            } catch (err) {
+                alert('제안 목록을 불러오지 못했습니다.');
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        }
+
+        function openAdminModal() {
+            const modal = document.getElementById('admin-modal');
+            const token = (window.__ADMIN_TOKEN__ || '').trim();
+            if (token) {
+                // 이미 로그인 상태면 로그인 입력을 감추고 리뷰 화면 바로 표시
+                document.getElementById('admin-login-view').classList.add('hidden');
+                document.getElementById('admin-review-view').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-login-view').classList.remove('hidden');
+                document.getElementById('admin-review-view').classList.add('hidden');
+                // Enter 지원 및 포커스
+                attachAdminEnterKey();
+                const u = document.getElementById('admin-username-modal');
+                if (u) u.focus();
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function closeAdminModal() {
+            const modal = document.getElementById('admin-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 관리자 로그인 입력에서 Enter로 로그인 지원
+        function attachAdminEnterKey() {
+            ['admin-username-modal', 'admin-password-modal'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.__enterBound) return; // 중복 방지
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const btn = document.getElementById('admin-login-btn-modal');
+                        if (btn) btn.click();
+                    }
+                });
+                el.__enterBound = true;
+            });
+        }
+
+        async function loadSuggestionsModal() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/suggest/list');
+                const data = await res.json();
+                const items = data.items || [];
+                const tbody = document.getElementById('suggest-tbody-modal');
+                tbody.innerHTML = '';
+                for (const it of items) {
+                    const isEdit = it.type === 'edit';
+                    const std = it.standard ?? it.proposed_standard ?? '';
+                    const currentStd = it.current_standard || '';
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b';
+                    tr.setAttribute('data-slang', it.slang);
+                    tr.setAttribute('data-standard', std);
+                    tr.setAttribute('data-explain', it.explain || '');
+                    tr.setAttribute('data-type', isEdit ? 'edit' : 'add');
+                    if (isEdit) {
+                        tr.setAttribute('data-current-standard', currentStd);
+                        tr.setAttribute('data-proposed-standard', std);
+                        tr.setAttribute('data-reason', it.reason || '');
+                    }
+                    // 수정 요청인 경우 표준어를 "현재 → 제안" 형식으로 표시
+                    const stdDisplay = isEdit && currentStd ?
+                        `${escapeHtml(currentStd)} → ${escapeHtml(std)}` :
+                        escapeHtml(std);
+                    tr.innerHTML = `
+                        <td class="p-2"><input type="checkbox" class="suggest-check-modal" value="${it.id}"></td>
+                        <td class="p-2">${it.id}${isEdit ? '<span class="text-xs text-emerald-600 ml-1">(수정)</span>' : ''}</td>
+                        <td class="p-2">${escapeHtml(it.slang)}</td>
+                        <td class="p-2" title="${isEdit ? '현재 표준어에서 제안 표준어로 변경' : ''}">${stdDisplay}</td>
+                        <td class="p-2">${escapeHtml(it.explain || '')}</td>
+                        <td class="p-2"><button class="suggest-edit-btn px-2 py-1 border rounded hover:bg-gray-50">편집</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+                const all = document.getElementById('suggest-check-all-modal');
+                if (all) {
+                    all.checked = false;
+                    all.onclick = () => {
+                        document.querySelectorAll('.suggest-check-modal').forEach(ch => { ch.checked = all.checked; });
+                    };
+                }
+            } catch (err) {
+                alert('제안 목록을 불러오지 못했습니다.');
+            }
+        }
+
+        // === 모의고사 ===
+        let quizItems = [];
+        let quizIndex = 0;
+        let quizAnswers = []; // 사용자가 고른 인덱스
+
+        async function quizStart() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/quiz');
+                const data = await res.json();
+                quizItems = data.items || [];
+                if (!quizItems.length) throw new Error('문제를 불러오지 못했습니다.');
+                quizIndex = 0;
+                quizAnswers = new Array(quizItems.length).fill(null);
+                document.getElementById('quiz-result').classList.add('hidden');
+                document.getElementById('quiz-view').classList.remove('hidden');
+                document.getElementById('quiz-msg').textContent = '';
+                openQuiz();
+                renderQuiz();
+            } catch (err) {
+                alert('모의고사를 시작할 수 없습니다.');
+            }
+        }
+
+        function openQuiz() {
+            const modal = document.getElementById('quiz-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function closeQuiz() {
+            const modal = document.getElementById('quiz-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function renderQuiz() {
+            const q = quizItems[quizIndex];
+            document.getElementById('quiz-progress').textContent = `${quizIndex + 1} / ${quizItems.length}`;
+            document.getElementById('quiz-question').textContent = q.question;
+            const wrap = document.getElementById('quiz-choices');
+            wrap.innerHTML = '';
+            (q.choices || []).forEach((c, idx) => {
+                const id = `quiz-choice-${idx}`;
+                const div = document.createElement('label');
+                div.className = 'quiz-choice';
+                div.innerHTML = `<input class="sr-only" type="radio" name="quiz-choice" id="${id}" value="${idx}"> <span>${escapeHtml(c)}</span>`;
+                wrap.appendChild(div);
+            });
+            // 자동 진행 및 잠금 로직
+            wrap.querySelectorAll('input[name="quiz-choice"]').forEach((input) => {
+                input.addEventListener('change', () => {
+                    if (quizAnswers[quizIndex] !== null) {
+                        // 이미 선택된 경우 변경 불가
+                        input.checked = (parseInt(input.value) === quizAnswers[quizIndex]);
+                        return;
+                    }
+                    quizAnswers[quizIndex] = parseInt(input.value);
+                    const label = input.closest('label');
+                    if (label) label.classList.add('selected');
+                    // 현재 문항 잠금
+                    wrap.querySelectorAll('input[name="quiz-choice"]').forEach((r) => { r.disabled = true; });
+                    // 다음으로 자동 이동 또는 제출
+                    setTimeout(() => {
+                        if (quizIndex < quizItems.length - 1) {
+                            quizIndex += 1;
+                            renderQuiz();
+                        } else {
+                            quizSubmit();
+                        }
+                    }, 200);
+                });
+            });
+            const sel = quizAnswers[quizIndex];
+            if (sel !== null) {
+                const input = wrap.querySelector(`input[value="${sel}"]`);
+                if (input) { input.checked = true; const label = input.closest('label'); if (label) label.classList.add('selected'); }
+                // 이미 선택된 문항이면 수정 불가(잠금)
+                wrap.querySelectorAll('input[name="quiz-choice"]').forEach((r) => { r.disabled = true; });
+            }
+        }
+
+        function quizPrev() {
+            if (quizIndex === 0) return;
+            saveQuizSelection();
+            quizIndex -= 1;
+            renderQuiz();
+        }
+
+        function quizNext() {
+            saveQuizSelection();
+            if (quizIndex < quizItems.length - 1) {
+                quizIndex += 1;
+                renderQuiz();
+            } else {
+                quizSubmit();
+            }
+        }
+
+        function saveQuizSelection() {
+            const checked = document.querySelector('input[name="quiz-choice"]:checked');
+            if (checked) quizAnswers[quizIndex] = parseInt(checked.value);
+        }
+
+        function quizSubmit() {
+            let correct = 0;
+            for (let i = 0; i < quizItems.length; i++) {
+                if (quizAnswers[i] === quizItems[i].answer) correct++;
+            }
+            const grade = gradeFromScore(correct, quizItems.length);
+            document.getElementById('quiz-score').textContent = correct.toString();
+            document.getElementById('quiz-grade').textContent = grade.toString();
+            document.getElementById('quiz-view').classList.add('hidden');
+            document.getElementById('quiz-result').classList.remove('hidden');
+        }
+
+        function gradeFromScore(score, total) {
+            // 10문제 기준 등급 산출: 9~10=1, 8=2, 7=3, 6=4, 5=5, 4=6, 3=7, 2=8, <=1=9
+            const ratio = score / total;
+            if (score >= 9) return 1;
+            if (score === 8) return 2;
+            if (score === 7) return 3;
+            if (score === 6) return 4;
+            if (score === 5) return 5;
+            if (score === 4) return 6;
+            if (score === 3) return 7;
+            if (score === 2) return 8;
+            return 9;
+        }
+
+        async function loadSlangModal() {
+            try {
+                const res = await fetch('http://127.0.0.1:8000/slang/list');
+                const data = await res.json();
+                const items = data.items || [];
+                const tbody = document.getElementById('slang-tbody-modal');
+                tbody.innerHTML = '';
+                for (const it of items) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b';
+                    tr.setAttribute('data-slang', it.slang);
+                    tr.setAttribute('data-standard', it.standard || '');
+                    tr.setAttribute('data-explain', it.explain || '');
+                    tr.innerHTML = `
+                        <td class="p-2"><input type="checkbox" class="slang-check-modal" data-slang="${escapeHtml(it.slang)}"></td>
+                        <td class="p-2">${escapeHtml(it.slang)}</td>
+                        <td class="p-2">${escapeHtml(it.standard || '')}</td>
+                        <td class="p-2">${escapeHtml(it.explain || '')}</td>
+                        <td class="p-2"><button class="slang-edit px-2 py-1 border rounded hover:bg-gray-50">편집</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+                const all = document.getElementById('slang-check-all-modal');
+                if (all) {
+                    all.checked = false;
+                    all.onclick = () => {
+                        document.querySelectorAll('.slang-check-modal').forEach(ch => { ch.checked = all.checked; });
+                    };
+                }
+            } catch (err) {
+                alert('사전 목록을 불러오지 못했습니다.');
+            }
+        }
+
+        // === 신조어 수정 요청 사이드 패널 ===
+        let __editPanelActive = false;
+        let __editResizeObs = null;
+        function openEditPanel() {
+            const p = document.getElementById('edit-request-panel');
+            const card = document.getElementById('output-card');
+            const out = document.getElementById('output-area');
+            const target = card || out;
+            if (!target) { p.classList.remove('hidden'); return; }
+            const r = target.getBoundingClientRect();
+            // 카드 전체 영역(통역하기 버튼 포함)의 컨테이너 높이로 확장
+            const container = document.querySelector('body > div.max-w-5xl.mx-auto.px-6.py-6 > div.bg-white.rounded-2xl.shadow-lg.overflow-hidden');
+            const containerRect = container ? container.getBoundingClientRect() : r;
+            const gap = 10; // 카드 우측과 패널 사이 여백 (요청값)
+            const viewportW = window.innerWidth;
+            // 고정 폭: 350px
+            const defaultWidth = 350;
+            let width = 350;
+            const top = containerRect.top + window.scrollY;
+            // 항상 출력 카드의 오른쪽에 두되, 화면을 넘치면 우측 가장자리로 붙임
+            let left = r.right + gap + window.scrollX;
+            const maxLeft = viewportW - width - gap + window.scrollX;
+            if (left > maxLeft) left = maxLeft;
+            p.style.top = `${top}px`;
+            p.style.left = `${left}px`;
+            p.style.width = `${width}px`;
+            p.style.height = `${containerRect.height}px`;
+            p.style.marginLeft = '10px'; // 겹치지 않도록 왼쪽 여백
+            // 사용자 폭 조절 비활성화 + 고정 폭 350px
+            p.style.resize = 'none';
+            p.style.minWidth = '350px';
+            p.style.maxWidth = '350px';
+            p.classList.remove('hidden');
+            __editPanelActive = true;
+            // 고정 모드: 스크롤/리사이즈 시 재배치하지 않음
+            // ResizeObserver로 폭 변경을 추적해 저장 및 재정렬
+            try {
+                if (!__editResizeObs) {
+                    __editResizeObs = new ResizeObserver(() => {
+                        const w = parseFloat(getComputedStyle(p).width);
+                        if (!isNaN(w)) {
+                            window.__editPanelWidth = w;
+                            // 위치는 유지 (재배치 안 함)
+                        }
+                    });
+                }
+                __editResizeObs.observe(p);
+            } catch (e) { /* no-op */ }
+        }
+        function closeEditPanel() {
+            const p = document.getElementById('edit-request-panel');
+            p.classList.add('hidden');
+            __editPanelActive = false;
+            window.removeEventListener('resize', __repositionEditPanel);
+            window.removeEventListener('scroll', __repositionEditPanel);
+            try { if (__editResizeObs) __editResizeObs.unobserve(p); } catch (e) { /* no-op */ }
+        }
+        function __repositionEditPanel() { /* 고정 모드: 재배치 안 함 */ }
+        async function prefillEditPanelFromReplaced() {
+            const s = (window.__lastReplaced__ || '').split(';')[0] || '';
+            let slang = '', currentStd = '';
+            if (s.includes('→')) {
+                const parts = s.split('→');
+                slang = parts[0].trim().replace(/≈.*$/, '').trim();
+                currentStd = parts[1].trim();
+            }
+            // 만약 replaced 정보가 없거나 비어있으면, 사용자가 입력한 문장에서 CSV 매칭
+            if (!slang) {
+                try {
+                    const inputTextEl = document.getElementById('input-text');
+                    const inputVal = (inputTextEl?.value || '').trim();
+                    if (inputVal) {
+                        const list = await loadSlangListCached();
+                        // 긴 신조어부터 검사, 영어는 대소문자 무시, 한글은 포함 매칭
+                        const items = list.slice().sort((a, b) => (b.slang?.length || 0) - (a.slang?.length || 0));
+                        const lower = inputVal.toLowerCase();
+                        for (const it of items) {
+                            if (!it.slang) continue;
+                            const key = String(it.slang);
+                            // 영문자 포함 시 대소문자 무시 매칭
+                            if (/[A-Za-z]/.test(key)) {
+                                if (lower.includes(key.toLowerCase())) {
+                                    slang = key;
+                                    currentStd = it.standard || '';
+                                    break;
+                                }
+                            } else {
+                                // 한글은 단순 포함 매칭 (조사/어미 처리는 서버 전처리에서 수행)
+                                if (inputVal.includes(key)) {
+                                    slang = key;
+                                    currentStd = it.standard || '';
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { /* no-op */ }
+            }
+            document.getElementById('edit-slang').value = slang;
+            document.getElementById('edit-current').value = currentStd;
+            document.getElementById('edit-proposed').value = '';
+            document.getElementById('edit-reason').value = '';
+            document.getElementById('edit-msg').textContent = '';
+            if (typeof applyProtectedLocks === 'function') applyProtectedLocks();
+        }
+
+        // 팝업 입력란 잠금: 신조어/현재 표준어는 수정 불가
+        function applyProtectedLocks() {
+            try {
+                const slangEl = document.getElementById('edit-slang');
+                const currentEl = document.getElementById('edit-current');
+                if (slangEl) {
+                    slangEl.readOnly = true;
+                    slangEl.classList.add('bg-gray-100', 'text-gray-600', 'cursor-not-allowed');
+                    slangEl.title = '이 항목은 수정할 수 없습니다.';
+                }
+                if (currentEl) {
+                    currentEl.readOnly = true;
+                    currentEl.classList.add('bg-gray-100', 'text-gray-600', 'cursor-not-allowed');
+                    currentEl.title = '이 항목은 수정할 수 없습니다.';
+                }
+            } catch (e) { /* no-op */ }
+        }
+        // 싫어요 프리필 계산(값만 반환)
+        async function computeDislikePrefillValues() {
+            const s = (window.__lastReplaced__ || '').split(';')[0] || '';
+            let slang = '', current = '';
+            if (s.includes('→')) {
+                const parts = s.split('→');
+                slang = parts[0].trim().replace(/≈.*$/, '').trim();
+                current = parts[1].trim();
+            }
+            if (!slang) {
+                try {
+                    const inputTextEl = document.getElementById('input-text');
+                    const inputVal = (inputTextEl?.value || '').trim();
+                    if (inputVal) {
+                        const list = await loadSlangListCached();
+                        const items = list.slice().sort((a, b) => (b.slang?.length || 0) - (a.slang?.length || 0));
+                        const lower = inputVal.toLowerCase();
+                        for (const it of items) {
+                            if (!it.slang) continue;
+                            const key = String(it.slang);
+                            if (/[A-Za-z]/.test(key)) {
+                                if (lower.includes(key.toLowerCase())) {
+                                    slang = key;
+                                    current = it.standard || '';
+                                    break;
+                                }
+                            } else {
+                                if (inputVal.includes(key)) {
+                                    slang = key;
+                                    current = it.standard || '';
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { /* no-op */ }
+            }
+            return { slang, current };
+        }
+
+        // 외부(예: 이미지 카드)에서 값들을 넘겨 즉시 패널을 띄우고 채우기 위한 헬퍼
+        // 사용 예: window.openEditPanelWithValues('신조어', '현재표준', '제안표준', '사유')
+        function openEditPanelWithValues(slang = '', current = '', proposed = '', reason = '') {
+            openEditPanel();
+            const slangEl = document.getElementById('edit-slang');
+            const currentEl = document.getElementById('edit-current');
+            const proposedEl = document.getElementById('edit-proposed');
+            const reasonEl = document.getElementById('edit-reason');
+            const msgEl = document.getElementById('edit-msg');
+            if (slangEl) slangEl.value = String(slang || '');
+            if (currentEl) currentEl.value = String(current || '');
+            if (proposedEl) proposedEl.value = String(proposed || '');
+            if (reasonEl) reasonEl.value = String(reason || '');
+            if (msgEl) msgEl.textContent = '';
+        }
+        // 전역에서 접근 가능하도록 노출
+        window.openEditPanelWithValues = openEditPanelWithValues;
+
+        // "싫어요" 동작 전용入口: 외부 컴포넌트가 호출 → 실제로 싫어요 팝업(패널)을 열고 값 반영
+        // 사용 예: window.triggerDislikeWithValues('신조어','현재표준','제안표준','사유')
+        function triggerDislikeWithValues(slang = '', current = '', proposed = '', reason = '') {
+            openEditPanelWithValues(slang, current, proposed, reason);
+        }
+        window.triggerDislikeWithValues = triggerDislikeWithValues;
+
+        // (삭제됨) 하단 섹션 버튼 초기화는 더 이상 필요하지 않습니다.
+
+        async function loadSlangListCached() {
+            if (window.__slangListCache && Array.isArray(window.__slangListCache)) return window.__slangListCache;
+            const res = await fetch('http://127.0.0.1:8000/slang/list');
+            const data = await res.json();
+            window.__slangListCache = data.items || [];
+            return window.__slangListCache;
+        }
+        async function submitEditRequest() {
+            const slang = document.getElementById('edit-slang').value.trim();
+            const current = document.getElementById('edit-current').value.trim();
+            const proposed = document.getElementById('edit-proposed').value.trim();
+            const reason = document.getElementById('edit-reason').value.trim();
+            const msg = document.getElementById('edit-msg');
+            if (!slang || !proposed) { msg.textContent = '신조어와 제안 표준어를 입력하세요.'; msg.className = 'text-sm text-red-600'; return; }
+            try {
+                const resp = await fetch('http://127.0.0.1:8000/suggest/edit', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ slang, current_standard: current, proposed_standard: proposed, reason })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || resp.status);
+                }
+                msg.textContent = '수정 요청이 접수되었습니다.';
+                msg.className = 'text-sm text-emerald-700';
+                setTimeout(() => { closeEditPanel(); }, 700);
+            } catch (err) {
+                msg.textContent = `오류: ${err.message}`;
+                msg.className = 'text-sm text-red-600';
+            }
+        }
+
+        function openSlangEditModal() {
+            const modal = document.getElementById('slang-edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('slang-edit-msg').textContent = '';
+        }
+        function closeSlangEditModal() {
+            const modal = document.getElementById('slang-edit-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 간단 관리자 패널: Shift+A로 열기 → 목록 출력 후 승인/거절 ID 입력
+        // [비활성화] 보안/오작동 방지를 위해 단축키 기능 제거
+        // document.addEventListener('keydown', async (e) => {
+        //     if (e.shiftKey && e.key.toLowerCase() === 'a') {
+        //         /* removed */
+        //     }
+        // });
+
+        document.getElementById('input-text').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                doTranslate();
+            }
+        });
+
+        // TTS (Text-to-Speech) 기능
+        function initTextToSpeech() {
+            if (!('speechSynthesis' in window)) {
+                console.warn('이 브라우저는 음성 합성을 지원하지 않습니다.');
+                const ttsBtn = document.getElementById('tts-btn');
+                if (ttsBtn) {
+                    ttsBtn.style.display = 'none';
+                }
+                return;
+            }
+            speechSynthesis = window.speechSynthesis;
+        }
+
+        function updateTTSButton(speaking) {
+            const ttsBtn = document.getElementById('tts-btn');
+            const ttsIcon = document.getElementById('tts-icon');
+            const ttsStatus = document.getElementById('tts-status');
+
+            if (!ttsBtn) return;
+
+            if (speaking) {
+                ttsBtn.classList.remove('hover:bg-gray-100');
+                ttsBtn.classList.add('bg-blue-100');
+                ttsIcon.classList.remove('text-gray-500');
+                ttsIcon.classList.add('text-blue-600');
+                ttsStatus.classList.remove('hidden');
+                ttsBtn.title = '재생 중... (클릭하여 중지)';
+            } else {
+                ttsBtn.classList.remove('bg-blue-100');
+                ttsBtn.classList.add('hover:bg-gray-100');
+                ttsIcon.classList.remove('text-blue-600');
+                ttsIcon.classList.add('text-gray-500');
+                ttsStatus.classList.add('hidden');
+                ttsBtn.title = '음성 듣기';
+            }
+        }
+
+        function toggleTextToSpeech() {
+            if (!speechSynthesis) {
+                alert('음성 합성이 지원되지 않는 브라우저입니다.');
+                return;
+            }
+
+            const outputArea = document.getElementById('output-area');
+            const outputText = outputArea.textContent.trim();
+
+            // 기본 메시지가 아닐 때만 재생
+            if (!outputText || outputText === '번역 결과가 여기에 표시됩니다' || outputText.startsWith('[연결 오류]')) {
+                alert('재생할 내용이 없습니다.');
+                return;
+            }
+
+            // 현재 재생 중이면 중지
+            if (isSpeaking || isSpeakingInput) {
+                speechSynthesis.cancel();
+                isSpeaking = false;
+                isSpeakingInput = false;
+                updateTTSButton(false);
+                updateInputTTSButton(false);
+                return;
+            }
+
+            // 기존 재생 중지 (입력 영역 재생 중지)
+            speechSynthesis.cancel();
+            isSpeakingInput = false;
+            updateInputTTSButton(false);
+
+            // 한국어 음성으로 재생
+            const utterance = new SpeechSynthesisUtterance(outputText);
+            utterance.lang = 'ko-KR'; // 한국어 설정
+            utterance.rate = 1.0; // 속도 (0.1 ~ 10)
+            utterance.pitch = 1.0; // 높이 (0 ~ 2)
+            utterance.volume = 1.0; // 볼륨 (0 ~ 1)
+
+            // 한국어 음성 목소리 선택 (가능한 경우)
+            const voices = speechSynthesis.getVoices();
+            const koreanVoice = voices.find(voice =>
+                voice.lang.includes('ko') || voice.lang.includes('KR')
+            );
+            if (koreanVoice) {
+                utterance.voice = koreanVoice;
+            }
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                updateTTSButton(true);
+                console.log('음성 재생 시작:', outputText.substring(0, 50));
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                updateTTSButton(false);
+                console.log('음성 재생 종료');
+            };
+
+            utterance.onerror = (event) => {
+                console.error('음성 재생 오류:', event.error);
+                isSpeaking = false;
+                updateTTSButton(false);
+                alert('음성 재생 중 오류가 발생했습니다.');
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // 입력 영역 TTS 기능
+        function updateInputTTSButton(speaking) {
+            const ttsBtn = document.getElementById('tts-input-btn');
+            const ttsIcon = document.getElementById('tts-input-icon');
+            const ttsStatus = document.getElementById('tts-input-status');
+
+            if (!ttsBtn) return;
+
+            if (speaking) {
+                ttsBtn.classList.remove('hover:bg-gray-100');
+                ttsBtn.classList.add('bg-blue-100');
+                ttsIcon.classList.remove('text-gray-500');
+                ttsIcon.classList.add('text-blue-600');
+                ttsStatus.classList.remove('hidden');
+                ttsBtn.title = '재생 중... (클릭하여 중지)';
+            } else {
+                ttsBtn.classList.remove('bg-blue-100');
+                ttsBtn.classList.add('hover:bg-gray-100');
+                ttsIcon.classList.remove('text-blue-600');
+                ttsIcon.classList.add('text-gray-500');
+                ttsStatus.classList.add('hidden');
+                ttsBtn.title = '입력 내용 음성 듣기';
+            }
+        }
+
+        function toggleInputTextToSpeech() {
+            if (!speechSynthesis) {
+                alert('음성 합성이 지원되지 않는 브라우저입니다.');
+                return;
+            }
+
+            const inputText = document.getElementById('input-text');
+            const text = inputText.value.trim();
+
+            if (!text) {
+                alert('재생할 내용이 없습니다.');
+                return;
+            }
+
+            // 현재 재생 중이면 중지
+            if (isSpeakingInput || isSpeaking) {
+                speechSynthesis.cancel();
+                isSpeakingInput = false;
+                isSpeaking = false;
+                updateInputTTSButton(false);
+                updateTTSButton(false);
+                return;
+            }
+
+            // 기존 재생 중지 (출력 영역 재생 중지)
+            speechSynthesis.cancel();
+            isSpeaking = false;
+            updateTTSButton(false);
+
+            // 한국어 음성으로 재생
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // 한국어 음성 목소리 선택
+            const voices = speechSynthesis.getVoices();
+            const koreanVoice = voices.find(voice =>
+                voice.lang.includes('ko') || voice.lang.includes('KR')
+            );
+            if (koreanVoice) {
+                utterance.voice = koreanVoice;
+            }
+
+            utterance.onstart = () => {
+                isSpeakingInput = true;
+                updateInputTTSButton(true);
+            };
+
+            utterance.onend = () => {
+                isSpeakingInput = false;
+                updateInputTTSButton(false);
+            };
+
+            utterance.onerror = (event) => {
+                console.error('음성 재생 오류:', event.error);
+                isSpeakingInput = false;
+                updateInputTTSButton(false);
+                alert('음성 재생 중 오류가 발생했습니다.');
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // 페이지 로드 시 음성 인식 및 TTS 초기화
+        window.addEventListener('DOMContentLoaded', () => {
+            initSpeechRecognition();
+            updateQuizVisibility();
+
+            initTextToSpeech();
+            // 팝업 잠금 초기 적용
+            try { applyProtectedLocks(); } catch (e) { /* no-op */ }
+            // 예시 초기화
+            try { updateExamples(); updateExampleTitles(); } catch (e) { /* no-op */ }
+
+            // 음성 목소리 목록이 늦게 로드될 수 있어서 이벤트 리스너 추가
+            if (speechSynthesis) {
+                speechSynthesis.onvoiceschanged = () => {
+                    console.log('음성 목록 업데이트');
+                };
+            }
+
+            // 초기 모드가 신조어→표준어인 경우 제안/추가 섹션 표시
+            try {
+                if (currentMode === 'grandson-to-grandma') {
+                    const csvSec = document.getElementById('csv-add-section');
+                    csvSec.classList.remove('hidden');
+                }
+            } catch (e) { /* no-op */ }
+
+            // URL 파라미터로 관리자 모드 노출 (?admin=1&token=...)
+            try {
+                const params = new URLSearchParams(location.search);
+                if (params.get('admin') === '1') {
+                    const token = params.get('token') || '';
+                    window.__ADMIN_TOKEN__ = token;
+                    const addBtn = document.getElementById('csv-add-btn');
+                    if (addBtn) {
+                        addBtn.classList.remove('hidden');
+                        addBtn.title = token ? '관리자 전용(토큰 전달됨)' : '관리자 전용(토큰 미전달)';
+                    }
+                }
+            } catch (e) { /* no-op */ }
+
+            // 비밀 버튼: 단축키(⌘/Ctrl + Shift + A) 또는 로고 5회 클릭
+            // [비활성화] 단축키 기능 제거 (로고 5회 클릭만 유지)
+            // document.addEventListener('keydown', (e) => {
+            //     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+            //         e.preventDefault();
+            //         e.stopPropagation();
+            //         openAdminModal();
+            //     }
+            // });
+
+            const logoEl = document.getElementById('app-logo');
+            if (logoEl) {
+                let clickCount = 0; let timer = null;
+                logoEl.addEventListener('click', () => {
+                    clickCount += 1;
+                    if (clickCount === 1) {
+                        timer = setTimeout(() => { clickCount = 0; }, 900);
+                    }
+                    if (clickCount >= 5) {
+                        clearTimeout(timer); clickCount = 0; openAdminModal();
+                    }
+                });
+            }
+            // Enter 로그인 지원(모달 열리기 전에도 바인딩 시도)
+            attachAdminEnterKey();
+        });
+
+        // 모의고사 버튼 노출: 신조어↔표준어 탭에서만 표시
+        function updateQuizVisibility() {
+            const quizBtn = document.getElementById('quiz-open');
+            if (!quizBtn) return;
+            const show = currentMode === 'grandson-to-grandma' || currentMode === 'grandma-to-grandson';
+            quizBtn.style.display = show ? '' : 'none';
+        }
+    </script>
+    <!-- 하단 여유 공간 -->
+    <div class="h-20 md:h-32"></div>
+</body>
+
+</html>

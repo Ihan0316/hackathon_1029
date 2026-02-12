@@ -1,0 +1,7 @@
+/.DS_Store
+/.env
+/.gcloudignore
+/__pycache__
+/slang_dict.csv
+/suggestions.json
+/발표자료
